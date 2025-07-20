@@ -7,12 +7,13 @@ To design and implement a datawarehouse that integrates data from multiple csv f
 
 ## Datasource (CSV files)
 1. CRM files
-   >>cust_info
-   >>prd_info
-   >>sales_details
+   a)cust_info
+   b)prd_info
+   c)sales_details
 2. ERP files
-   >>CUST_AZ12
-   >>LOC_A101
-   >>PX_CAT_G1V2
+   a)CUST_AZ12
+   b)LOC_A101
+   c)PX_CAT_G1V2
+
 
 
