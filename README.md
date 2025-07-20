@@ -3,7 +3,7 @@
 To design and implement a datawarehouse that integrates data from multiple csv files and provide clean, structured and query ready dataset for business intelligence reporting.
 
 ## Design Architecture
-<img width="1071" height="397" alt="image" src="https://github.com/user-attachments/assets/8732f3ed-33af-4b0d-8d00-c6a608287fc1" />
+<img width="583" height="246" alt="image" src="https://github.com/user-attachments/assets/c9d10119-ae2a-4a7f-ad5b-4406db9f1a09" />
 
 ## Datasource (CSV files)
 1. CRM files
