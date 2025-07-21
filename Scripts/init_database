@@ -1,0 +1,33 @@
+/*
+===============================================
+Create New database
+Script Purpose: This Script creates new database after checking if the database already exists.
+Once the database is created 3 schemas- bronze, silver and gold are created
+==============================================
+*/
+
+USE master;
+Go
+
+IF (NOT EXISTS (select name from sys.databases where name = 'sales_datawarehouse'))
+BEGIN
+	CREATE DATABASE sales_datawarehouse
+END
+ELSE 
+BEGIN
+	PRINT 'Database "sales_datawarehouse" already exists'
+END
+
+/*Create 3 Schemas under sales_datawarehouse database*/
+
+USE sales_datawarehouse;
+GO
+
+CREATE SCHEMA bronze;
+GO
+
+CREATE SCHEMA silver;
+GO
+
+CREATE SCHEMA gold;
+GO
