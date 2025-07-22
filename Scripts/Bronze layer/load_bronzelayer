@@ -1,0 +1,138 @@
+/*
+DATA LOAD - BRONZE LAYER
+Script Purpose: This Script extarcts data from source file and loads into bronze layer tables.
+The data is truncated and loaded.
+
+to run the code : EXEC bronze.load_bronze
+*/
+
+
+CREATE OR ALTER PROCEDURE bronze.load_bronze AS
+BEGIN
+	DECLARE @start_time DATETIME,@end_time DATETIME,@total_start_time datetime, @total_end_time DATETIME;
+		
+		BEGIN TRY
+			SET @total_start_time =getdate();
+			PRINT '>>>Bronze layer- data loading>>>';
+			PRINT '==========================================================================';
+			SET @start_time =getdate();
+			PRINT 'Truncating crm_cust_info table';
+			TRUNCATE TABLE bronze.crm_cust_info
+
+			PRINT 'Loading crm_cust_info table';
+			BULK INSERT bronze.crm_cust_info
+			FROM 'E:\PROJECT\Sales-datawarehouse-sqlserver\Dataset\CRM Files\cust_info.csv'
+				WITH (
+					FIRSTROW = 2,
+					FIELDTERMINATOR = ',',
+					TABLOCK
+					);
+			PRINT 'Loading crm_cust_info table- completed';
+			SET @end_time=getdate();
+			PRINT 'Load duration ' + cast(datediff(second,@start_time,@end_time) as nvarchar) + ' seconds';
+			print '===================================================================================='
+
+			SET @start_time =GETDATE();
+
+			PRINT 'Truncating crm_prd_info table'
+			TRUNCATE TABLE bronze.crm_prd_info
+
+			PRINT 'Loading crm_prd_info table'
+			BULK INSERT bronze.crm_prd_info
+			FROM 'E:\PROJECT\Sales-datawarehouse-sqlserver\Dataset\CRM Files\prd_info.csv'
+				WITH(
+					 FIRSTROW=2,
+					 FIELDTERMINATOR =',',
+					 TABLOCK
+					 );
+			PRINT 'Loading crm_prd_info table - completed successfully'
+			set @end_time = getdate();
+			PRINT 'Load Duration: ' + cast(datediff(second,@start_time,@end_time) as nvarchar) + ' seconds';
+			Print '==================================================================================='
+	
+	
+			set @start_time = getdate();
+			PRINT 'Truncating crm_sales_details table'
+			TRUNCATE TABLE bronze.crm_sales_details
+
+			PRINT 'Loading crm_sales_details table'
+			BULK INSERT bronze.crm_sales_details
+			FROM 'E:\PROJECT\Sales-datawarehouse-sqlserver\Dataset\CRM Files\sales_details.csv'
+				WITH(
+					 FIRSTROW=2,
+					 FIELDTERMINATOR =',',
+					 TABLOCK
+					 );
+			PRINT 'Loading crm_sales_details table - completed successfully'
+			set @end_time = getdate();
+			PRINT 'Load Duration: ' + cast(datediff(second,@start_time,@end_time) as nvarchar) + ' seconds';
+			Print '========================================================================================';
+
+			set @start_time = getdate();
+			PRINT 'Truncating erp_cust_az12 table'
+			TRUNCATE TABLE bronze.erp_cust_az12
+
+			PRINT 'Loading erp_cust_az12 table'
+			BULK INSERT bronze.erp_cust_az12
+			FROM 'E:\PROJECT\Sales-datawarehouse-sqlserver\Dataset\ERP Files\CUST_AZ12.csv'
+				WITH(
+					 FIRSTROW=2,
+					 FIELDTERMINATOR =',',
+					 TABLOCK
+					 );
+			PRINT 'Loading erp_cust_az12 table - completed successfully'
+			set @end_time = getdate();
+			PRINT 'Load Duration: ' + cast(datediff(second,@start_time,@end_time) as nvarchar) + ' seconds';
+			Print '========================================================================================';
+
+			set @start_time =getdate();
+			PRINT 'Truncaring erp_loc_a101 table'
+			TRUNCATE TABLE bronze.erp_loc_a101
+
+			PRINT 'Loading erp_loc_a101 table'
+			BULK INSERT bronze.erp_loc_a101
+			FROM 'E:\PROJECT\Sales-datawarehouse-sqlserver\Dataset\ERP Files\LOC_A101.csv'
+				WITH(
+					 FIRSTROW=2,
+					 FIELDTERMINATOR =',',
+					 TABLOCK	
+					 );
+			PRINT 'Loading erp_loc_a101 table - completed successfully'
+			set @end_time = getdate();
+			PRINT 'Load Duration: ' + cast(datediff(second,@start_time,@end_time) as nvarchar) + ' seconds';
+			Print '========================================================================================';
+
+			set @start_time=getdate();
+			PRINT 'Truncating erp_px_cat_g1v2 table'
+			TRUNCATE TABLE bronze.erp_px_cat_g1v2
+
+			PRINT 'Loading erp_px_cat_g1v2 table'
+			BULK INSERT bronze.erp_px_cat_g1v2
+			FROM 'E:\PROJECT\Sales-datawarehouse-sqlserver\Dataset\ERP Files\PX_CAT_G1V2.csv'
+				WITH(
+					 FIRSTROW=2,
+					 FIELDTERMINATOR =',',
+					 TABLOCK
+					 );
+			PRINT 'Loading erp_px_cat_g1v2 table - completed successfully'
+			set @end_time = getdate();
+			set @total_end_time =GETDATE();
+
+			PRINT 'Load Duration: ' + cast(datediff(second,@start_time,@end_time) as nvarchar) + ' seconds';
+			Print '========================================================================================';
+
+		
+			PRINT 'Total Bronze layer Load Duration: ' + cast(datediff(second,@total_start_time,@total_end_time) as nvarchar) + ' seconds';
+			Print '========================================================================================';
+		END TRY
+		BEGIN CATCH
+			PRINT ' Error while loading Bronze layer';
+			PRINT 'Error Message ' + ERROR_MESSAGE();
+			PRINT 'Error Message ' + ERROR_NUMBER();
+			PRINT 'Error Message ' + ERROR_STATE();
+		END CATCH
+END
+
+
+
+		 
