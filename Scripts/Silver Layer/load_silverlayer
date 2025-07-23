@@ -1,0 +1,226 @@
+/* ===========================================
+Data Cleaning , transformation and data load
+
+Script Purpose : This Script performs data cleaning and transformation 
+				 then insert the processed data into silver layer
+
+to run the procedure : EXEC silver.load_silver_proc;
+*/
+
+CREATE OR ALTER PROCEDURE silver.load_silver_proc AS 
+BEGIN
+	DECLARE @start_time DATETIME,@end_time DATETIME, @batch_start_time datetime, @batch_end_time Datetime;
+
+	BEGIN TRY
+		set @batch_start_time =GETDATE();
+		PRINT '=========================================================='
+		PRINT 'Loading Silver layer'
+		PRINT '==========================================================='
+
+		PRINT '=========================================================='
+		PRINT 'Loading CRM Tables'
+		PRINT '=========================================================='
+
+		set @start_time = GETDATE();
+		PRINT 'Truncating silver.crm_cust_info table';
+		TRUNCATE TABLE silver.crm_cust_info;
+
+		PRINT 'Inserting data into silver.crm_cust_info table';
+		INSERT INTO silver.crm_cust_info(
+			cst_id,
+			cst_key,
+			cst_firstname,
+			cst_lastname,
+			cst_marital_status,
+			cst_gndr,
+			cst_create_date)
+
+		(
+			select 
+				cst_id,
+				cst_key,
+				TRIM(cst_firstname) as cst_firstname,
+				TRIM(cst_lastname) as cst_lasttname,
+				case when TRIM(cst_marital_status) = 'M' then 'Married'
+					 when TRIM(cst_marital_status) = 'S' then 'Single'
+					 else 'n/a'
+				end as cst_marital_status,
+				case when TRIM(cst_gndr)='M' then 'Male'
+					 when TRIM(cst_gndr)='F' then 'Female'
+					 else 'n/a' 
+				end as cst_gndr,
+				cst_create_date
+			from 
+			(select 
+				*,
+				ROW_NUMBER() over (partition by cst_id order by cst_create_date desc) as flag
+			from bronze.crm_cust_info
+			where cst_id is not null) as sq
+			where flag =1 
+
+		)
+		SET @end_time = GETDATE()
+
+		PRINT 'Load time of silver.crm_cust_info table : ' + cast(datediff(second,@start_time,@end_time) as varchar)
+		PRINT '------------------------------------------------------------------------------'
+
+		set @start_time = GETDATE();
+		PRINT 'Truncating silver.crm_prd_info table';
+		TRUNCATE TABLE silver.crm_prd_info;
+
+		print 'Inserting data into silver.crm_prd_info table'
+		INSERT INTO silver.crm_prd_info(
+			prd_id ,
+			category_id ,
+			prd_key ,
+			prd_nm ,
+			prd_cost ,
+			prd_line ,
+			prd_start_dt ,
+			prd_end_dt 
+		)
+
+			select 
+				prd_id,
+				replace(substring(prd_key,1,5),'-','_') as category_id,
+				substring(prd_key,7,len(prd_key)) as prd_key,
+				prd_nm,
+				isnull(prd_cost,0) as prd_cost,
+				case UPPER(TRIM(prd_line)) 
+					 when 'R' then 'Road'
+					 when 'S' then 'Other Sales'
+					 when 'M' then 'Mountain'
+					 when 'T' then 'Touring'
+					 else 'n/a'
+				end as prd_line,
+				prd_start_dt,
+				dateadd(DAY,-1,lead(prd_start_dt) over (partition by prd_key order by prd_start_dt) ) as prd_end_dt
+			from bronze.crm_prd_info
+
+			SET @end_time = GETDATE()
+
+		PRINT 'Load time of silver.crm_prd_info table : ' + cast(datediff(second,@start_time,@end_time) as varchar)
+		PRINT '------------------------------------------------------------------------------'
+
+		set @start_time = GETDATE();
+		PRINT 'Truncating silver.crm_sales_details table';
+		TRUNCATE table silver.crm_sales_details;
+
+		PRINT 'Inserting data into silver.crm_sales_details table';
+		INSERT INTO silver.crm_sales_details(
+			sls_ord_num ,
+			sls_prd_key ,
+			sls_cust_id ,
+			sls_order_dt ,
+			sls_ship_dt ,
+			sls_due_dt ,
+			sls_sales ,
+			sls_quantity ,
+			sls_price
+		 )
+		select 
+			sls_ord_num,
+			sls_prd_key,
+			sls_cust_id,
+			case when sls_order_dt = 0 or len(sls_order_dt) !=8 then NULL
+				 else cast(cast(sls_order_dt as varchar) as date)
+			end as sls_order_dt,
+			case when sls_ship_dt = 0 or len(sls_ship_dt) !=8 then NULL
+				 else cast(cast(sls_ship_dt as varchar) as date)
+			end as sls_ship_dt,
+			case when sls_due_dt = 0 or len(sls_due_dt) !=8 then NULL
+				 else cast(cast(sls_due_dt as varchar) as date)
+			end as sls_due_dt,
+			case when sls_sales <=0 or sls_sales is null then sls_quantity * abs(sls_price)
+				 else sls_sales
+			end as sls_sales,
+			sls_quantity,
+			abs(sls_price) as sls_price
+		from bronze.crm_sales_details
+		SET @end_time = GETDATE()
+
+		PRINT 'Load time of silver.crm_sales_details table : ' + cast(datediff(second,@start_time,@end_time) as varchar)
+
+		PRINT '=========================================================='
+		PRINT 'Loading ERP Tables'
+		PRINT '=========================================================='
+
+		set @start_time = GETDATE();
+		PRINT 'Truncating silver.erp_cust_az12 table'; 
+		TRUNCATE TABLE silver.erp_cust_az12;
+
+		PRINT 'Inserting data into silver.erp_cust_az12 table'
+		INSERT INTO silver.erp_cust_az12(
+			cid ,
+			bdate ,
+			gender
+		)
+
+		select 
+			case when cid like 'NAS%' then SUBSTRING(cid,4,len(cid))
+				 else cid
+			end as cid,
+			case when bdate>getdate() then NULL
+				 else bdate
+			end as bdate,
+			case when UPPER(TRIM(gender )) in ('F' , 'FEMALE') then 'Female'
+				 when UPPER(TRIM(gender)) in ('M', 'MALE') then 'Male'
+			else 'n/a' 
+			end as gender
+		from  bronze.erp_cust_az12
+		SET @end_time = GETDATE()
+
+		PRINT 'Load time of silver.erp_cust_az12 table : ' + cast(datediff(second,@start_time,@end_time) as varchar)
+		PRINT '------------------------------------------------------------------------------'
+
+		set @start_time=getdate();
+		PRINT 'Truncating silver.erp_loc_a101 table';
+		TRUNCATE TABLE silver.erp_loc_a101;
+
+		PRINT 'Inserting data into silver.erp_loc_a101 table';
+		INSERT INTO silver.erp_loc_a101(
+			cid,
+			country
+		)
+		select 
+			replace(cid,'-',''), 
+			case when UPPER(TRIM(country)) ='DE' then 'Germany'
+				 when UPPER(TRIM(country)) in ('USA', 'US', 'UNITED STATES') then 'USA'
+				 when UPPER(TRIM(country)) is null or UPPER(TRIM(country)) = '' then 'n/a'
+				 else country
+			end as country
+		from 
+		bronze.erp_loc_a101
+		SET @end_time = GETDATE()
+
+		PRINT 'Load time of silver.erp_loc_a101 table : ' + cast(datediff(second,@start_time,@end_time) as varchar)
+		PRINT '------------------------------------------------------------------------------'
+
+		set @start_time=getdate();
+		PRINT 'Truncating silver.erp_px_cat_g1v2 table';
+		TRUNCATE TABLE silver.erp_px_cat_g1v2;
+
+		PRINT 'Inserting data into silver.erp_px_cat_g1v2 table';
+		INSERT INTO silver.erp_px_cat_g1v2(
+			id,
+			category,
+			subcat,
+			maintenance
+		)
+		select 
+			id,
+			category,
+			subcat,
+			maintenance
+		from bronze.erp_px_cat_g1v2
+		SET @end_time = GETDATE()
+
+		PRINT 'Load time of silver.erp_px_cat_g1v2 table : ' + cast(datediff(second,@start_time,@end_time) as varchar)
+	END TRY
+	BEGIN CATCH
+		print 'Error Message ' + error_message();
+		print 'Error Message ' + error_state();
+		print 'Error Message ' + error_number();
+	END CATCH
+
+END
